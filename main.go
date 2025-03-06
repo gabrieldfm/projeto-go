@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 type Contact struct {
@@ -46,6 +47,25 @@ func (c *ContactService) List(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(contacts)
 }
 
+func (c *ContactService) Get(w http.ResponseWriter, r *http.Request, id int) {
+	w.Header().Set("Content-Type", "application/json")
+	if val, ok := c.Contacts[id]; ok {
+		json.NewEncoder(w).Encode(val)
+	} else {
+		http.Error(w, "Contact not found", http.StatusNotFound)
+	}
+}
+
+func handlegetContacts(w http.ResponseWriter, r *http.Request, service *ContactService) {
+	q := r.URL.Query()
+	if q.Get("id") != "" {
+		id, _ := strconv.Atoi(q.Get("id"))
+		service.Get(w, r, id)
+	} else {
+		service.List(w, r)
+	}
+}
+
 func main() {
 	service := &ContactService{Contacts: make(map[int]Contact)}
 	mux := http.NewServeMux()
@@ -53,7 +73,7 @@ func main() {
 	mux.HandleFunc("/contacts", func(w http.ResponseWriter, req *http.Request) {
 		switch req.Method {
 		case http.MethodGet:
-			service.List(w, req)
+			handlegetContacts(w, req, service)
 		case http.MethodPost:
 			service.Create(w, req)
 		default:
